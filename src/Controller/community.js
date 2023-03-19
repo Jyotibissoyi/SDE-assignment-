@@ -1,32 +1,63 @@
 const User = require('../Model/userModel');
-const CommunityModel = require('../Model/communityModel');
+const communityModel = require('../Model/communityModel');
+const memberModel = require('../Model/memberModel')
+const roleModel = require('../Model/roleModel')
 
 
 const createCommunity = async (req, res) => {
   try {
-    const { name, slug, owner } = req.body;
-    const ownerData = await User.findById({ id: owner })
+    const { name } = req.body;
+
+    const token = req.token
+    const id = token.id
 
     if (Object.keys(req.body).length == 0) {
-      return res.status(400).json({ message: 'Please provide name, slug, owner details' });
+      return res.status(400).json({ message: 'Please provide name.' });
     }
     if (!name) {
       return res.status(400).json({ message: 'Please provide name' });
     }
-    if (!slug) {
-      return res.status(400).json({ message: 'Please provide  slug' });
-    }
-    if (!owner) {
-      return res.status(400).json({ message: 'Please provide owner details' });
-    }
-    if (!ownerData) {
-      return res.status(400).json({ message: 'Please provide valid owner ID' });
+
+    const slugCheck = await communityModel.findOne({ slug: name.toLowerCase() })
+
+    if (slugCheck) {
+      return res.status(400).json({ message: 'slug already exist.' });
     }
 
+    let data = {
+      name: name,
+      slug: name.toLowerCase(),
+      owner: id
+    }
 
-    const community = await CommunityModel.create(req.body)
+    const community = await communityModel.create(data)
 
-    return res.status(201).json({ community });
+    let commun = {
+      id: community.id,
+      name: community.name,
+      slug: community.slug,
+      owner: community.owner,
+      created_at: community.createdAt,
+      updated_at: community.updatedAt
+    }
+
+    const roles = await roleModel.find()
+
+    console.log(roles)
+
+    const adminId = roles.filter(item => item.name === 'Community Admin').map(item => item.id);
+
+    console.log(adminId)
+
+    let memberData = {
+      community: community.id,
+      user: id,
+      role: adminId[0]
+    }
+
+    await memberModel.create(memberData)
+
+    return res.status(201).json({ status: true, content: { data: commun } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });
@@ -34,15 +65,15 @@ const createCommunity = async (req, res) => {
 };
 
 
-const getCommunity = async (req, res) => {
+const getAllCommunity = async (req, res) => {
   try {
-    const communities = await CommunityModel.find();
-    var total = getData.length
+    const communities = await communityModel.find();
+    var total = communities.length
 
     if (!communities) {
       return res.status(400).send({ message: 'No such Community there' });
     }
-    return res.status(200).send({ status: true, content: { meta: { total: page, page:total } }, data: communities })
+    return res.status(200).send({ status: true, content: { meta: { total: total } }, data: communities })
 
   } catch (err) {
     console.error(err);
@@ -51,16 +82,31 @@ const getCommunity = async (req, res) => {
 };
 
 
-const getCommunitybyId = async (req, res) => {
+const getAllMembers = async (req, res) => {
   try {
-    const communityID = req.params;
-    const communities = await CommunityModel.findById({ id: communityID });
-    const page = getData.length
+    const communityID = req.params.id;
+    const communities = await memberModel.find({ community: communityID });
+    const total = communities.length
+
+
+    let ids = communities.map(items => items.user)
+
+    let memArr = []
+    for (let i = 0; i < ids.length; i++) {
+      let id = ids[i]
+      let data = await User.findOne({ id: id })
+      let members = {
+        id: data.id,
+        name: data.name,
+        email: data.email
+      }
+      memArr.push(members)
+    }
 
     if (!communities) {
       return res.status(400).send({ message: 'No such Community there' });
     }
-    return res.status(200).send({ status: true, content: { meta: { total:total,total: page } }, data: communities })
+    return res.status(200).send({ status: true, content: { meta: { total: total } }, data: memArr })
 
   } catch (err) {
     console.error(err);
@@ -69,20 +115,18 @@ const getCommunitybyId = async (req, res) => {
 };
 
 
-const getCommunitybyOwner = async (req, res) => {
+const getOwnedCommunity = async (req, res) => {
   try {
-    const Data = req.query;
-    if(!req.query.owner){
-        return res.status(400).json({ message: 'Please provide owner ID' });  
-    }
-    
-    const communities = await CommunityModel.find({ owner: Data });
-    const page = getData.length
+    const token = req.token
+    const id = token.id
+
+    const communities = await communityModel.find({ owner: id });
+    const total = communities.length
 
     if (!communities) {
       return res.status(400).send({ message: 'No such Community there' });
     }
-    return res.status(200).send({ status: true, content: { meta: { total:total, total: page } }, data: communities })
+    return res.status(200).send({ status: true, content: { meta: { total: total } }, data: communities })
 
   } catch (err) {
     console.error(err);
@@ -91,4 +135,54 @@ const getCommunitybyOwner = async (req, res) => {
 };
 
 
-module.exports = { createCommunity, getCommunity, getCommunitybyId, getCommunitybyOwner };
+
+
+const getmyjoinedcommunity = async (req, res) => {
+  try {
+    const token = req.token
+    const id = token.id
+
+    const myData = await memberModel.find({ user: id })
+    const total = myData.length
+
+    let ids = myData.map(items => items.community)
+
+    let ownerArr = []
+    for (let i = 0; i < ids.length; i++) {
+      let id = ids[i]
+      let data = await communityModel.findOne({ id: id })
+      let x = {
+        id: data.id,
+        name: data.name,
+        slug: data.slug
+      }
+      ownerArr.push(x)
+    }
+
+    // let allData = []
+    // for (let i = 0; i < ownerArr.length; i++) {
+    //   let id = ownerArr[i]
+    //   let data = await User.findOne({ id: id })
+    //   let owners = {
+    //     id: data.id,
+    //     name: data.name
+    //   }
+    //   allData.push(owners)
+    // }
+
+    // const main = {
+    //   data : ownerArr,
+    //   owner: allData
+    // }
+
+
+    return res.status(200).send({ status: true, content: { meta: { total: total } }, data: ownerArr })
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+
+module.exports = { createCommunity, getAllCommunity, getAllMembers, getOwnedCommunity, getmyjoinedcommunity };

@@ -1,11 +1,8 @@
 const express = require("express")
 const mongoose = require("mongoose")
-const route = require("./Routes/route")
+const route = require("./Router/route")
 const app = express()
 require("dotenv").config()
-
-
-
 
 app.use(express.json())
 
@@ -21,5 +18,3 @@ app.use("/", route)
 app.listen(process.env.PORT , function () {
     console.log("Express is running on port " + (process.env.PORT ))
 })
-
-console.log("Let's set some task🥰🥰🥰")

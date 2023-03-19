@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
+const { Snowflake } = require('@theinternetfolks/snowflake');
 
 const CommunitySchema = new mongoose.Schema({
 
-    id: { type: String },
+    id: {
+        type: String,
+        default: Snowflake.generate(),
+        immutable: true,
+        required: true,
+    },
 
     name: { type: String },
 
