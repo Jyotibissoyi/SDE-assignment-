@@ -140,7 +140,6 @@ const getOwnedCommunity = async (req, res) => {
 const getmyjoinedcommunity = async (req, res) => {
   try {
     let token = req.token
-    let id = token.id
 
     const myData = await memberModel.find({ user: token.id })
     const total = myData.length
@@ -179,12 +178,12 @@ const getmyjoinedcommunity = async (req, res) => {
     }
 
     const main = {
-      data: ownerArr,
       meta: {
         total: total,
         pages: 1,
         page: 1
-      }
+      },
+      data: ownerArr
     }
 
     return res.status(200).send({ status: true, content: main })
