@@ -139,44 +139,55 @@ const getOwnedCommunity = async (req, res) => {
 
 const getmyjoinedcommunity = async (req, res) => {
   try {
-    const token = req.token
-    const id = token.id
+    let token = req.token
+    let id = token.id
 
-    const myData = await memberModel.find({ user: id })
+    const myData = await memberModel.find({ user: token.id })
     const total = myData.length
 
     let ids = myData.map(items => items.community)
 
+
+    let newArr = []
     let ownerArr = []
     for (let i = 0; i < ids.length; i++) {
       let id = ids[i]
       let data = await communityModel.findOne({ id: id })
+
       let x = {
         id: data.id,
         name: data.name,
         slug: data.slug
       }
       ownerArr.push(x)
+      newArr.push(data.owner)
     }
 
-    // let allData = []
-    // for (let i = 0; i < ownerArr.length; i++) {
-    //   let id = ownerArr[i]
-    //   let data = await User.findOne({ id: id })
-    //   let owners = {
-    //     id: data.id,
-    //     name: data.name
-    //   }
-    //   allData.push(owners)
-    // }
+    let allData = []
+    for (let i = 0; i < newArr.length; i++) {
+      let id = newArr[i]
+      let data = await User.findOne({ id: id })
+      let owners = {
+        id: data.id,
+        name: data.name
+      }
+      allData.push(owners)
+    }
 
-    // const main = {
-    //   data : ownerArr,
-    //   owner: allData
-    // }
+    for (let i = 0; i < ownerArr.length; i++) {
+      ownerArr[i].owner = allData[i]; // set the owner field to the corresponding owner object
+    }
 
+    const main = {
+      data: ownerArr,
+      meta: {
+        total: total,
+        pages: 1,
+        page: 1
+      }
+    }
 
-    return res.status(200).send({ status: true, content: { meta: { total: total } }, data: ownerArr })
+    return res.status(200).send({ status: true, content: main })
 
   } catch (error) {
     console.error(error);
